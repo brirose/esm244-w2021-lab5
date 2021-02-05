@@ -1,0 +1,109 @@
+---
+title: "Part 2: Spatial Data"
+author: "Bri Baker"
+date: "2/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+library(sf)
+library(tmap)
+
+```
+
+
+
+```{r}
+ca_counties <- read_sf(here("data","ca_counties","CA_Counties_TIGER2016.shp"))
+
+ca_subset <- ca_counties %>% 
+  select(NAME, ALAND) %>% 
+  rename(county_name = NAME, land_area = ALAND)
+```
+
+```{r}
+
+ca_subset %>% st_crs() # check the existing CRS for spatial data
+
+
+```
+
+```{r}
+ggplot(data = ca_subset) +
+  geom_sf(aes(fill = land_area), color = "white", size = 0.1) +
+  theme_void() +
+  scale_fill_gradientn(colors = c("cyan","blue","purple"))
+```
+
+```{r}
+
+sesbania <- read_sf(here("data","red_sesbania","ds80.shp"))
+
+# Check the CRS:
+sesbania %>% st_crs()
+
+```
+
+```{r}
+sesbania <- st_transform(sesbania, 3857)
+
+# Then check it: 
+sesbania %>% st_crs()
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = ca_subset) +
+  geom_sf(data = sesbania, size = 1, color = "red")
+```
+
+
+```{r}
+ca_sesbania <- ca_subset %>% 
+  st_join(sesbania)
+
+sesbania_counts <- ca_sesbania %>% 
+  count(county_name)
+
+```
+
+
+```{r}
+ggplot(data = sesbania_counts) +
+  geom_sf(aes(fill = n), color = "white", size = 0.1) +
+  scale_fill_gradientn(colors = c("lightgray","orange","red")) +
+  theme_minimal() +
+  labs(fill = "Number of S. punicea records")
+```
+
+```{r}
+# Subset of sesbania point locations only in Solano County
+solano_sesbania <- sesbania %>% 
+  filter(COUNTY == "Solano")
+
+# Only keep Solano polygon from California County data
+solano <- ca_subset %>% 
+  filter(county_name == "Solano")
+
+ggplot() +
+  geom_sf(data = solano) +
+  geom_sf(data = solano_sesbania)
+```
+
+
+
+```{r}
+tmap_mode(mode = "view") # interactive
+
+# Then make a map (with the polygon fill color updated by variable 'land_area', updating the color palette to "BuGn"), then add another shape layer for the sesbania records (added as dots):
+tm_shape(ca_subset) +
+  tm_fill("land_area", palette = "BuGn") +
+  tm_shape(sesbania) +
+  tm_dots()
+```
+
+see key for links
